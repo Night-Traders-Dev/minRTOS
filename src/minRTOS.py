@@ -3,6 +3,42 @@ import queue
 import time
 import heapq
 
+class Mutex:
+    def __init__(self):
+        self.lock = threading.Lock()
+        self.owner = None
+        self.waiting_tasks = []
+
+    def acquire(self, task):
+        with self.lock:
+            if self.owner is None:
+                self.owner = task
+                task.held_mutexes.append(self)  # ✅ Track that the task holds this mutex
+                return True
+            else:
+                if task not in self.waiting_tasks:
+                    self.waiting_tasks.append(task)
+                    print(f"🔒 {task.name} waiting for mutex held by {self.owner.name}")
+                return False
+
+    def release(self):
+        with self.lock:
+            if self.owner:
+                self.owner.held_mutexes.remove(self)  # ✅ Remove from held mutexes
+            if self.waiting_tasks:
+                self.owner = self.waiting_tasks.pop(0)  # ✅ Give to waiting task
+                print(f"🔓 Mutex now owned by {self.owner.name}")
+                self.owner.held_mutexes.append(self)  # ✅ Track ownership change
+            else:
+                self.owner = None
+
+    def _boost_priority(self):
+        """ Boost the owner's priority if a higher-priority task is waiting. """
+        if self.owner and self.waiting_tasks:
+            highest_waiting_priority = max(task.priority for task in self.waiting_tasks)
+            if highest_waiting_priority > self.owner.priority:
+                self.owner.priority = highest_waiting_priority
+
 class Task:
     def __init__(self, name, update_func, period=0, priority=1, deadline=None, overrun_action="kill", event_driven=False):
         self.name = name
@@ -14,8 +50,21 @@ class Task:
         self.next_run = time.perf_counter()
         self.running = True
         self.lock = threading.Lock()
-        self.event = threading.Event() if event_driven else None  # Only set event if event-driven
-        self.thread = None  
+        self.event = threading.Event() if event_driven else None
+        self.thread = None
+        self.held_mutexes = []  # ✅ Track acquired mutexes
+
+    def stop(self):
+        """Stop the task and release any mutexes it holds."""
+        self.running = False
+        for mutex in self.held_mutexes:  # ✅ Release all mutexes on stop
+            mutex.release()
+        if self.event:
+            self.event.set()
+
+    def __lt__(self, other):
+        """Allows priority comparison in heapq."""
+        return self.priority > other.priority  # Higher priority = runs first
 
     def run(self):
         """Execute the task with deadline tracking and real-time scheduling."""
@@ -24,13 +73,13 @@ class Task:
             if self.event:
                 self.event.wait()  # Wait for external trigger
                 self.event.clear()  # Reset after execution
-            
+
             if now >= self.next_run:
                 start_time = time.perf_counter()
-                
+
                 with self.lock:
                     self.update()
-                
+
                 end_time = time.perf_counter()
                 execution_time = end_time - start_time
 
@@ -43,16 +92,24 @@ class Task:
                     elif self.overrun_action == "pause":
                         print(f"⏸ Task {self.name} is paused due to overrun.")
                         self.event.wait()
-                
+
                 self.next_run = now + self.period if self.period > 0 else now
-            
+
             time.sleep(0.0001)  
 
-    def stop(self):
-        """Stop the task."""
-        self.running = False
-        if self.event:
-            self.event.set()  # Wake up event-driven task so it can exit cleanly
+
+    def acquire_mutex(self, mutex, timeout=None):
+        """Acquire a mutex with timeout handling."""
+        if mutex.acquire(self, timeout):
+            self.held_mutexes.append(mutex)
+            return True
+        return False
+
+    def release_mutex(self, mutex):
+        """Release a mutex."""
+        if mutex in self.held_mutexes:
+            mutex.release()
+            self.held_mutexes.remove(mutex)
 
 class Scheduler:
     def __init__(self, scheduling_policy="EDF"):
