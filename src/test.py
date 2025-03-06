@@ -1,14 +1,15 @@
 import time
 from minRTOS import Task, Scheduler, Mutex
 
-mutex = Mutex()
+mutex = Mutex()  # Initialize Mutex
 scheduler = None  # Define scheduler globally
 
 def low_priority_task():
     """Low priority task that locks a mutex."""
     global scheduler
     print("🟢 Low-Priority Task Started")
-    mutex.acquire(Task("LowPriority", lambda: None, priority=1))
+    # Pass the task object to acquire method
+    mutex.acquire(Task("LowPriority", lambda: None, priority=1))  # Explicitly passing Task
     print("🔒 Low-Priority Task Acquired Mutex")
     time.sleep(2)  # Simulate work
     mutex.release()
@@ -20,7 +21,8 @@ def high_priority_task():
     print("🚀 High-Priority Task Started")
     time.sleep(0.5)  # Ensure the low-priority task locks the mutex first
     print("🛑 High-Priority Task Trying to Acquire Mutex")
-    mutex.acquire(Task("HighPriority", lambda: None, priority=5))
+    # Pass the task object to acquire method
+    mutex.acquire(Task("HighPriority", lambda: None, priority=5))  # Explicitly passing Task
     print("✅ High-Priority Task Acquired Mutex")
     time.sleep(1)
     mutex.release()
@@ -54,5 +56,5 @@ if __name__ == "__main__":
     # Run for 5 seconds then stop everything
     time.sleep(5)
     scheduler.stop_all()
-    
+
     print("✅ Test Complete")
