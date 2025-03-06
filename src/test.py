@@ -1,85 +1,56 @@
-import signal
 import time
-import threading
-import os
-from minRTOS import Scheduler, Task, Mutex
+from minRTOS import Task, Scheduler, Mutex
 
-# Shared Mutex for testing Priority Inheritance
 mutex = Mutex()
 
-# Test Task: Periodic Execution
-def periodic_task():
-    print("🔄 Periodic Task Running")
-    time.sleep(0.2)  # Simulate work
+def low_priority_task():
+    """Low priority task that locks a mutex."""
+    print("🟢 Low-Priority Task Started")
+    mutex.acquire(Task("LowPriority", lambda: None, priority=1))
+    print("🔒 Low-Priority Task Acquired Mutex")
+    time.sleep(2)  # Simulate work
+    mutex.release()
+    print("🔓 Low-Priority Task Released Mutex")
 
-# Test Task: Deadline Enforcement
-def deadline_task():
-    print("⏳ Deadline Task Started")
-    time.sleep(1.2)  # Exceeds deadline
-    print("✅ Deadline Task Completed")
-
-# Test Task: Event-Driven Execution
-def event_task():
-    print("🔔 Event Task Triggered!")
-
-# Test Task: Mutex and Priority Inheritance
 def high_priority_task():
-    print("🚀 High Priority Task wants Mutex")
-    mutex.acquire(Task("HighPriority", lambda: None, priority=3))
-    print("✅ High Priority Task Acquired Mutex")
+    """High priority task that needs the mutex."""
+    print("🚀 High-Priority Task Started")
+    time.sleep(0.5)  # Ensure the low-priority task locks the mutex first
+    print("🛑 High-Priority Task Trying to Acquire Mutex")
+    mutex.acquire(Task("HighPriority", lambda: None, priority=5))
+    print("✅ High-Priority Task Acquired Mutex")
     time.sleep(1)
     mutex.release()
-    print("🔓 High Priority Task Released Mutex")
+    print("🔓 High-Priority Task Released Mutex")
 
-def low_priority_task():
-    print("🐢 Low Priority Task wants Mutex")
-    mutex.acquire(Task("LowPriority", lambda: None, priority=1))
-    print("✅ Low Priority Task Acquired Mutex")
-    time.sleep(2)
-    mutex.release()
-    print("🔓 Low Priority Task Released Mutex")
+def periodic_task():
+    """Task that runs periodically every second."""
+    print("⏳ Periodic Task Executing...")
 
-# Test Task: Inter-Task Messaging
-def message_receiver():
-    msg = scheduler.receive_message("ReceiverTask")
-    if msg:
-        print(f"📩 Message Received: {msg}")
+def event_driven_task():
+    """Task triggered externally."""
+    print("🔵 Event-Driven Task Executed")
 
-# Test: Interrupt-Based Scheduling
-def signal_sender():
-    print("🔔 Sending SIGUSR1 interrupt")
-    os.kill(os.getpid(), signal.SIGUSR1)
+if __name__ == "__main__":
+    # Initialize mutex and scheduler
+    scheduler = Scheduler(scheduling_policy="EDF")  
 
-# Initialize Scheduler
-scheduler = Scheduler(scheduling_policy="EDF")
+    # Create tasks
+    scheduler.add_task(Task(name="LowPriority", update_func=low_priority_task, priority=1))
+    scheduler.add_task(Task(name="HighPriority", update_func=high_priority_task, priority=5))
+    scheduler.add_task(Task(name="Periodic", update_func=periodic_task, period=1, priority=3))
+    scheduler.add_task(Task(name="EventTask", update_func=event_driven_task, priority=2, event_driven=True))
 
-# Add Tasks
-scheduler.add_task(Task("PeriodicTask", periodic_task, period=1, priority=2))
-scheduler.add_task(Task("DeadlineTask", deadline_task, period=2, priority=2, deadline=1))
-scheduler.add_task(Task("EventTask", event_task, priority=3, event_driven=True))
-scheduler.add_task(Task("HighPriorityTask", high_priority_task, priority=3))
-scheduler.add_task(Task("LowPriorityTask", low_priority_task, priority=1))
-scheduler.add_task(Task("ReceiverTask", message_receiver, priority=2, period=3))
 
-# Start Scheduler
-scheduler.start()
+    # Start the scheduler
+    scheduler.start()
 
-# Test Event-Driven Task
-time.sleep(2)
-scheduler.trigger_task("EventTask")
+    # Trigger event-driven task after 3 seconds
+    time.sleep(3)
+    scheduler.trigger_task("EventTask")
 
-# Test Message Passing
-time.sleep(2)
-scheduler.send_message("ReceiverTask", "Hello from Scheduler!")
+    # Run for 5 seconds then stop everything
+    time.sleep(5)
+    scheduler.stop_all()
 
-# Test Interrupt-Based Scheduling
-time.sleep(2)
-signal_sender()
-
-# Run for 10 seconds
-time.sleep(10)
-
-# Stop All Tasks
-scheduler.stop_all()
-
-print("✅ All tests completed successfully!")
+    print("✅ Test Complete")
