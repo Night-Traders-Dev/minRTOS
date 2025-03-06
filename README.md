@@ -2,7 +2,6 @@
 
 A lightweight real-time operating system (RTOS) for Python, designed to utilize Python 3.14’s no-GIL threading for true parallel execution.
 
-
 ---
 
 # Features
@@ -25,25 +24,25 @@ A lightweight real-time operating system (RTOS) for Python, designed to utilize 
 ✅ Message Queues for IPC (Inter-process communication between tasks)<br>
 ✅ Watchdog for Deadlocks (Detects and handles deadlocked tasks)<br>
 ✅ Dynamic Task Prioritization (Adjust priorities at runtime)<br>
-
+✅ Multi-Core Scheduling Support (Leveraging Python 3.14’s no-GIL threading)<br>
+✅ Task Profiling & Logging (Record execution statistics)<br>
 
 ---
 
 # Installation
 
 Clone the repository:
-```python
+```sh
 git clone https://github.com/Night-Trader-Dev/minRTOS.git
 cd minRTOS
 ```
 Ensure you are using Python 3.14+ (for true parallel threading).
 
-
 ---
 
 # Usage
 
-1️⃣ Creating and Running Tasks
+### 1️⃣ Creating and Running Tasks
 
 Create tasks and add them to the scheduler:
 ```python
@@ -66,7 +65,7 @@ scheduler.stop_all()  # Stop all tasks
 
 ---
 
-2️⃣ Event-Driven Tasks
+### 2️⃣ Event-Driven Tasks
 
 Tasks can wait for an external trigger:
 ```python
@@ -83,7 +82,7 @@ scheduler.trigger_task("EventTask")
 
 ---
 
-3️⃣ Mutex Synchronization with Priority Inheritance
+### 3️⃣ Mutex Synchronization with Priority Inheritance
 
 Prevent priority inversion when accessing shared resources:
 ```python
@@ -124,14 +123,14 @@ scheduler.stop_all()
 
 ---
 
-4️⃣ Removing Tasks Dynamically
+### 4️⃣ Removing Tasks Dynamically
 ```python
 scheduler.remove_task("Task1")
 ```
 
 ---
 
-5️⃣ Task Sleep & Timed Delays
+### 5️⃣ Task Sleep & Timed Delays
 
 Allow tasks to sleep without blocking execution:
 ```python
@@ -146,7 +145,7 @@ scheduler.add_task(sleep_task)
 
 ---
 
-6️⃣ Message Queues for Inter-Task Communication
+### 6️⃣ Message Queues for Inter-Task Communication
 ```python
 scheduler.send_message("ReceiverTask", "Hello from Scheduler!")
 
@@ -160,7 +159,7 @@ scheduler.add_task(receiver)
 
 ---
 
-7️⃣ Interrupt-Based Scheduling
+### 7️⃣ Interrupt-Based Scheduling
 ```python
 import signal
 import os
@@ -178,23 +177,20 @@ os.kill(os.getpid(), signal.SIGUSR1)
 
 # Scheduler Policies
 
-# 🔹 Earliest Deadline First (EDF)
+### 🔹 Earliest Deadline First (EDF)
 
 Tasks with the earliest deadline run first.
-<br>
 Dynamically adjusts execution order at runtime.
-
 
 To use EDF:
 ```python
 scheduler = Scheduler(scheduling_policy="EDF")
 ```
-# 🔹 Rate Monotonic Scheduling (RMS)
+
+### 🔹 Rate Monotonic Scheduling (RMS)
 
 Shorter-period tasks get higher priority.
-<br>
 Ideal for real-time periodic tasks.
-
 
 To use RMS:
 ```python
@@ -206,22 +202,19 @@ scheduler = Scheduler(scheduling_policy="RMS")
 # Upcoming Features
 
 🚀 Hard Real-Time Scheduling (Guaranteed execution windows)<br>
-🚀 Task Profiling & Logging (Record execution statistics)<br>
-🚀 Multi-Core Scheduling Support (Leveraging Python 3.14’s no-GIL threading)<br>
-
+🚀 Advanced Multi-Core Scheduling Optimization<br>
+🚀 More Detailed Execution Profiling & Logging<br>
 
 ---
 
 # License
 
 This project is licensed under the MIT License.
-<br>
 
 ---
 
 # Contributing
 
 Contributions, bug reports, and feature requests are welcome!
-<br>
 Feel free to submit issues or pull requests on GitHub.
 
