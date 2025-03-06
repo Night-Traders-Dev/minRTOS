@@ -2,14 +2,19 @@ import multiprocessing
 
 class Mutex:
     """Mutex with priority inheritance"""
-    def __init__(self):
+    def __init__(self, enable_priority_inheritance=True):
         self.lock = multiprocessing.Lock()
         self.owner = None
+#        self.task = None
         self.waiting_tasks = []
         self.original_priorities = {}
+        self.enable_priority_inheritance = enable_priority_inheritance
 
-    def enter(self, task):
-        self.acquire(self.task)
+    def __enter__(self):
+        """Custom enter to allow 'with' usage by explicitly passing the task."""
+        pass
+#        self.acquire(self.task)
+#        return self.task
 
     def __exit__(self, exc_type, exc_value, traceback):
         self.release()
@@ -35,7 +40,7 @@ class Mutex:
                 original_priority = self.original_priorities.pop(self.owner.name, None)
                 if original_priority is not None:
                     print(f"🔓 {self.owner.name} released Mutex (Restoring priority: {original_priority})")
-                    self.owner.priority = original_priority  # Only restore if it was boosted
+                    self.owner.priority = original_priority
                 self.owner = None
 
             if self.waiting_tasks:

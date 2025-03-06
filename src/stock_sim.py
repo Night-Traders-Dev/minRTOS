@@ -1,10 +1,11 @@
 import random
 import time
+import threading
 from collections import deque
 from minRTOS import Task, Scheduler, Mutex
 
-# Mutex for ensuring transaction safety
-market_mutex = Mutex()
+# Mutex for ensuring transaction safety with priority inheritance
+market_mutex = Mutex(enable_priority_inheritance=True)
 
 # Blockchain-like structure: each block contains transactions
 BLOCKCHAIN = deque(maxlen=100)  # Keep last 100 blocks for simplicity
@@ -46,7 +47,7 @@ def process_transactions():
 
                 # Adjust stock price based on supply and demand
                 STOCKS[stock]["price"] = max(
-                    1, 
+                    1,
                     (STOCKS[stock]["total_supply"] / max(1, STOCKS[stock]["circulating_supply"])) * 10
                 )
 
@@ -56,7 +57,7 @@ class ClientTrader(Task):
         super().__init__(name, self.run, priority=2)
 
     def run(self):
-        with market_mutex.enter(self.name):
+        with market_mutex:
             client = CLIENTS[self.name]
             stock = random.choice(list(STOCKS.keys()))
             action = random.choice(["buy", "sell"])
@@ -80,7 +81,7 @@ class ClientTrader(Task):
             if transactions:
                 create_block(transactions)
 
-        self.sleep(random.uniform(0.5, 2))  # Non-blocking sleep
+        time.sleep(random.uniform(0.5, 2))  # Non-blocking sleep
 
 class MarketOutput(Task):
     """Periodic stock market summary."""
@@ -100,13 +101,13 @@ if __name__ == "__main__":
 
     # Add client trading tasks
     for client in CLIENTS.keys():
-        scheduler.add_task(ClientTrader(client))
+        client_task = ClientTrader(client)
+        scheduler.add_task(client_task)
 
     # Add market summary output task
     scheduler.add_task(MarketOutput())
 
     # Start the scheduler in a separate thread
-    import threading
     def run_scheduler():
         scheduler.start()
 
