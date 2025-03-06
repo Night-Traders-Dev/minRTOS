@@ -9,13 +9,22 @@ A lightweight real-time operating system (RTOS) for Python, designed to utilize 
 
 ✅ Preemptive Scheduling (EDF & RMS)<br>
 ✅ Priority Inheritance for Mutexes (Prevents priority inversion)<br>
+✅ Priority Restoration on Mutex Release (Restores task priority after releasing a mutex)<br>
 ✅ High-Precision Timing (Using time.perf_counter())<br>
 ✅ Event-Driven Tasks (Tasks triggered externally)<br>
 ✅ Dynamic Task Creation & Removal<br>
-✅ Task Deadline Enforcement<br>
-✅ Thread-Based Execution<br>
-✅ Mutex-Based Synchronization (With proper ownership tracking)<br>
+✅ Task Deadline Enforcement (Auto-terminates or pauses on overruns)<br>
+✅ Thread-Based Execution (Utilizing Python 3.14’s no-GIL threading)<br>
+✅ Mutex-Based Synchronization (With proper ownership tracking & inheritance)<br>
 ✅ Inter-Task Communication (Using message queues)<br>
+✅ Time-Based Task Preemption (Soft preemption using threading.Timer)<br>
+✅ Rate Monotonic Scheduling (RMS) Preemption (Real-time scheduling)<br>
+✅ Interrupt-Based Scheduling (Using Python signal handlers)<br>
+✅ Real-Time Performance Metrics (Tracks CPU usage, overruns, execution time)<br>
+✅ Task Sleep & Timed Delays (Accurate sleep functions for real-time control)<br>
+✅ Message Queues for IPC (Inter-process communication between tasks)<br>
+✅ Watchdog for Deadlocks (Detects and handles deadlocked tasks)<br>
+✅ Dynamic Task Prioritization (Adjust priorities at runtime)<br>
 
 
 ---
@@ -23,11 +32,11 @@ A lightweight real-time operating system (RTOS) for Python, designed to utilize 
 # Installation
 
 Clone the repository:
-```bash
+```python
 git clone https://github.com/Night-Trader-Dev/minRTOS.git
 cd minRTOS
 ```
-Ensure you are using Python 3.14+ (for no-GIL threading).
+Ensure you are using Python 3.14+ (for true parallel threading).
 
 
 ---
@@ -122,25 +131,72 @@ scheduler.remove_task("Task1")
 
 ---
 
+5️⃣ Task Sleep & Timed Delays
+
+Allow tasks to sleep without blocking execution:
+```python
+def sleeping_task():
+    print("😴 Task Sleeping for 2s")
+    time.sleep(2)
+    print("⏰ Task Woke Up!")
+
+sleep_task = Task("SleepTask", sleeping_task, priority=2)
+scheduler.add_task(sleep_task)
+```
+
+---
+
+6️⃣ Message Queues for Inter-Task Communication
+```python
+scheduler.send_message("ReceiverTask", "Hello from Scheduler!")
+
+def receiver_task():
+    msg = scheduler.receive_message("ReceiverTask")
+    print(f"📩 Message Received: {msg}")
+
+receiver = Task("ReceiverTask", receiver_task, priority=2)
+scheduler.add_task(receiver)
+```
+
+---
+
+7️⃣ Interrupt-Based Scheduling
+```python
+import signal
+import os
+
+def signal_handler(signum, frame):
+    print("🚨 Received SIGUSR1 Interrupt!")
+
+signal.signal(signal.SIGUSR1, signal_handler)
+
+# Simulate an external interrupt
+os.kill(os.getpid(), signal.SIGUSR1)
+```
+
+---
+
 # Scheduler Policies
 
- 🔹 Earliest Deadline First (EDF)<br>
+# 🔹 Earliest Deadline First (EDF)
 
-Tasks with the earliest deadline run first.<br>
-
+Tasks with the earliest deadline run first.
+<br>
 Dynamically adjusts execution order at runtime.
 
 
-# To use EDF:
+To use EDF:
 ```python
 scheduler = Scheduler(scheduling_policy="EDF")
 ```
- 🔹 Rate Monotonic Scheduling (RMS)<br>
+# 🔹 Rate Monotonic Scheduling (RMS)
 
 Shorter-period tasks get higher priority.
+<br>
+Ideal for real-time periodic tasks.
 
 
-# To use RMS:
+To use RMS:
 ```python
 scheduler = Scheduler(scheduling_policy="RMS")
 ```
@@ -149,9 +205,9 @@ scheduler = Scheduler(scheduling_policy="RMS")
 
 # Upcoming Features
 
-🚀 Time-Based Task Preemption (Soft real-time guarantees)<br>
-🚀 Interrupt-Based Scheduling (Using Python signals)<br>
-🚀 Real-Time Performance Metrics (Tracking CPU usage & task overruns)<br>
+🚀 Hard Real-Time Scheduling (Guaranteed execution windows)<br>
+🚀 Task Profiling & Logging (Record execution statistics)<br>
+🚀 Multi-Core Scheduling Support (Leveraging Python 3.14’s no-GIL threading)<br>
 
 
 ---
@@ -159,6 +215,13 @@ scheduler = Scheduler(scheduling_policy="RMS")
 # License
 
 This project is licensed under the MIT License.
+<br>
 
+---
 
+# Contributing
+
+Contributions, bug reports, and feature requests are welcome!
+<br>
+Feel free to submit issues or pull requests on GitHub.
 
