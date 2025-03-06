@@ -1,8 +1,8 @@
-##minRTOS
+## minRTOS
 
 A lightweight real-time operating system (RTOS) for Python, designed to utilize Python 3.14’s no-GIL threading for true parallel execution.
 
-##Features
+## Features
 
 ✅ Preemptive Scheduling (EDF & RMS)
 ✅ High-Precision Timing (using time.perf_counter())
@@ -14,7 +14,7 @@ A lightweight real-time operating system (RTOS) for Python, designed to utilize 
 
 ---
 
-##Installation
+## Installation
 
 Clone the repository:
 ```bash
@@ -26,7 +26,7 @@ Ensure you are using Python 3.14+ (for no-GIL threading).
 
 ---
 
-##Usage
+## Usage
 
 1. Creating and Running Tasks
 
@@ -96,7 +96,7 @@ scheduler = Scheduler(scheduling_policy="RMS")
 
 ---
 
-##Upcoming Features
+## Upcoming Features
 
 🚀 Priority Inheritance for Mutexes
 🚀 Time-Based Task Preemption
@@ -105,7 +105,7 @@ scheduler = Scheduler(scheduling_policy="RMS")
 
 ---
 
-##License
+## License
 
 This project is licensed under the MIT License.
 
