@@ -6,26 +6,26 @@ A lightweight real-time operating system (RTOS) for Python, designed to utilize 
 
 # Features
 
-✅ Preemptive Scheduling (EDF & RMS)<br>
-✅ Priority Inheritance for Mutexes (Prevents priority inversion)<br>
-✅ Priority Restoration on Mutex Release (Restores task priority after releasing a mutex)<br>
-✅ High-Precision Timing (Using time.perf_counter())<br>
-✅ Event-Driven Tasks (Tasks triggered externally)<br>
-✅ Dynamic Task Creation & Removal<br>
-✅ Task Deadline Enforcement (Auto-terminates or pauses on overruns)<br>
-✅ Thread-Based Execution (Utilizing Python 3.14’s no-GIL threading)<br>
-✅ Mutex-Based Synchronization (With proper ownership tracking & inheritance)<br>
-✅ Inter-Task Communication (Using message queues)<br>
-✅ Time-Based Task Preemption (Soft preemption using threading.Timer)<br>
-✅ Rate Monotonic Scheduling (RMS) Preemption (Real-time scheduling)<br>
-✅ Interrupt-Based Scheduling (Using Python signal handlers)<br>
-✅ Real-Time Performance Metrics (Tracks CPU usage, overruns, execution time)<br>
-✅ Task Sleep & Timed Delays (Accurate sleep functions for real-time control)<br>
-✅ Message Queues for IPC (Inter-process communication between tasks)<br>
-✅ Watchdog for Deadlocks (Detects and handles deadlocked tasks)<br>
-✅ Dynamic Task Prioritization (Adjust priorities at runtime)<br>
-✅ Multi-Core Scheduling Support (Leveraging Python 3.14’s no-GIL threading)<br>
-✅ Task Profiling & Logging (Record execution statistics)<br>
+✅ **Preemptive Scheduling (EDF & RMS)**<br>
+✅ **Priority Inheritance for Mutexes** (Prevents priority inversion)<br>
+✅ **Priority Restoration on Mutex Release** (Restores task priority after releasing a mutex)<br>
+✅ **High-Precision Timing** (Using `time.perf_counter()`)<br>
+✅ **Event-Driven Tasks** (Tasks triggered externally)<br>
+✅ **Dynamic Task Creation & Removal**<br>
+✅ **Task Deadline Enforcement** (Auto-terminates or pauses on overruns)<br>
+✅ **Thread-Based Execution** (Utilizing Python 3.14’s no-GIL threading)<br>
+✅ **Mutex-Based Synchronization** (With proper ownership tracking & inheritance)<br>
+✅ **Inter-Task Communication** (Using message queues)<br>
+✅ **Time-Based Task Preemption** (Soft preemption using `threading.Timer`)<br>
+✅ **Rate Monotonic Scheduling (RMS) Preemption** (Real-time scheduling)<br>
+✅ **Interrupt-Based Scheduling** (Using Python signal handlers)<br>
+✅ **Real-Time Performance Metrics** (Tracks CPU usage, overruns, execution time)<br>
+✅ **Task Sleep & Timed Delays** (Accurate sleep functions for real-time control)<br>
+✅ **Message Queues for IPC** (Inter-process communication between tasks)<br>
+✅ **Watchdog for Deadlocks** (Detects and handles deadlocked tasks)<br>
+✅ **Dynamic Task Prioritization** (Adjust priorities at runtime)<br>
+✅ **Multi-Core Scheduling Support** (Leveraging Python 3.14’s no-GIL threading)<br>
+✅ **Task Profiling & Logging** (Record execution statistics)<br>
 
 ---
 
@@ -201,9 +201,9 @@ scheduler = Scheduler(scheduling_policy="RMS")
 
 # Upcoming Features
 
-🚀 Hard Real-Time Scheduling (Guaranteed execution windows)<br>
-🚀 Advanced Multi-Core Scheduling Optimization<br>
-🚀 More Detailed Execution Profiling & Logging<br>
+🚀 **Hard Real-Time Scheduling** (Guaranteed execution windows)<br>
+🚀 **Advanced Multi-Core Scheduling Optimization**<br>
+🚀 **More Detailed Execution Profiling & Logging**<br>
 
 ---
 
@@ -217,4 +217,5 @@ This project is licensed under the MIT License.
 
 Contributions, bug reports, and feature requests are welcome!
 Feel free to submit issues or pull requests on GitHub.
+
 
