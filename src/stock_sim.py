@@ -1,16 +1,15 @@
 import random
 import time
-import threading
 from collections import deque
 from minRTOS import Task, Scheduler, Mutex
 
-# Mutex for ensuring transaction safety with priority inheritance
+# Mutex to ensure safe transaction processing with priority inheritance
 market_mutex = Mutex(enable_priority_inheritance=True)
 
-# Blockchain-like structure: each block contains transactions
-BLOCKCHAIN = deque(maxlen=100)  # Keep last 100 blocks for simplicity
+# Blockchain-like ledger: Keeps the last 100 blocks of transactions
+BLOCKCHAIN = deque(maxlen=100)
 
-# Generate initial stock data (random initial supply)
+# Initialize stock market with 10 made-up stocks
 STOCKS = {
     f"STK{i}": {
         "total_supply": random.randint(5000, 10000),
@@ -20,20 +19,26 @@ STOCKS = {
     for i in range(10)
 }
 
-# Generate client data
-CLIENTS = {f"Client{i}": {"balance": random.uniform(1000, 10000), "portfolio": {}} for i in range(50)}
+# Generate 50 clients with random balances
+CLIENTS = {
+    f"Client{i}": {"balance": random.uniform(1000, 10000), "portfolio": {}} for i in range(50)
+}
 
 def create_block(transactions):
     """Creates a new block containing transactions."""
-    with market_mutex:
+#    market_mutex.acquire()
+    try:
         BLOCKCHAIN.append({
             "timestamp": time.time(),
             "transactions": transactions
         })
+    finally:
+        market_mutex.release()
 
 def process_transactions():
-    """Processes transactions in the blockchain to update market data."""
-    with market_mutex:
+    """Processes transactions from the blockchain and updates market data."""
+#    market_mutex.acquire()
+    try:
         for block in BLOCKCHAIN:
             for tx in block["transactions"]:
                 stock = tx["stock"]
@@ -41,28 +46,28 @@ def process_transactions():
                 action = tx["action"]
 
                 if action == "buy":
-                    STOCKS[stock]["circulating_supply"] -= amount  # Buying decreases available supply
+                    STOCKS[stock]["circulating_supply"] -= amount
                 elif action == "sell":
-                    STOCKS[stock]["circulating_supply"] += amount  # Selling increases supply
+                    STOCKS[stock]["circulating_supply"] += amount
 
-                # Adjust stock price based on supply and demand
-                STOCKS[stock]["price"] = max(
-                    1,
-                    (STOCKS[stock]["total_supply"] / max(1, STOCKS[stock]["circulating_supply"])) * 10
-                )
+                # Price adjusts based on supply-demand ratio
+                STOCKS[stock]["price"] = max(1, (STOCKS[stock]["total_supply"] / max(1, STOCKS[stock]["circulating_supply"])) * 10)
+    finally:
+        market_mutex.release()
 
 class ClientTrader(Task):
-    """Client trader task that buys and sells stocks."""
+    """A client that randomly buys and sells stocks."""
     def __init__(self, name):
         super().__init__(name, self.run, priority=2)
 
     def run(self):
-        with market_mutex:
+        transactions = []
+#        market_mutex.acquire()
+        try:
             client = CLIENTS[self.name]
             stock = random.choice(list(STOCKS.keys()))
             action = random.choice(["buy", "sell"])
             amount = random.randint(1, 10)
-            transactions = []
 
             if action == "buy":
                 cost = STOCKS[stock]["price"] * amount
@@ -80,42 +85,41 @@ class ClientTrader(Task):
 
             if transactions:
                 create_block(transactions)
+        finally:
+            market_mutex.release()
 
-        time.sleep(random.uniform(0.5, 2))  # Non-blocking sleep
+        time.sleep(random.uniform(0.5, 2))
 
 class MarketOutput(Task):
-    """Periodic stock market summary."""
+    """Outputs market summary periodically."""
     def __init__(self):
         super().__init__("MarketOutput", self.run, period=3, priority=1)
 
     def run(self):
         process_transactions()
         print("\n📊 Stock Market Summary:")
-        with market_mutex:
+#        market_mutex.acquire()
+        try:
             for stock, data in STOCKS.items():
                 held_by_clients = sum(client["portfolio"].get(stock, 0) for client in CLIENTS.values())
                 print(f"{stock}: ${data['price']:.2f}, Supply: {data['circulating_supply']}, Held by Clients: {held_by_clients}")
+        finally:
+            market_mutex.release()
 
 if __name__ == "__main__":
     scheduler = Scheduler(scheduling_policy="EDF")
 
     # Add client trading tasks
     for client in CLIENTS.keys():
-        client_task = ClientTrader(client)
-        scheduler.add_task(client_task)
+        scheduler.add_task(ClientTrader(client))
 
-    # Add market summary output task
+    # Add market summary task
     scheduler.add_task(MarketOutput())
 
-    # Start the scheduler in a separate thread
-    def run_scheduler():
-        scheduler.start()
+    # Start scheduler
+    scheduler.start()
 
-    scheduler_thread = threading.Thread(target=run_scheduler, daemon=True)
-    scheduler_thread.start()
-
-    # Run for 20 seconds then stop
+    # Run simulation for 20 seconds
     time.sleep(20)
     scheduler.stop_all()
-
     print("✅ Stock Market Simulation Complete")
