@@ -8,6 +8,12 @@ class Mutex:
         self.waiting_tasks = []
         self.original_priorities = {}
 
+    def enter(self, task):
+        self.acquire(self.task)
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.release()
+
     def acquire(self, task):
         """Acquire the mutex with priority inheritance."""
         with self.lock:
