@@ -10,6 +10,7 @@ LOG_FILE = "minRTOS_log.txt"
 
 class Scheduler:
     """Real-time task scheduler with multiprocessing and dynamic task management."""
+    
     def __init__(self, scheduling_policy="EDF"):
         self.tasks = {}  # Mapping of task names to Task objects
         self.message_queues = {}  # Message queues for inter-task communication
@@ -17,11 +18,12 @@ class Scheduler:
         self.schedule_cond = threading.Condition(self.lock)
         self.scheduling_policy = scheduling_policy
         self.scheduler_running = threading.Event()
+        self.scheduler_thread = None  
         self.log_queue = queue.Queue()
         signal.signal(signal.SIGUSR1, self._signal_handler)
 
     def add_task(self, task):
-        """Add a task to the scheduler dynamically."""
+        """Dynamically add a task."""
         with self.schedule_cond:
             self.tasks[task.name] = task
             self.message_queues[task.name] = multiprocessing.Queue()
@@ -30,23 +32,25 @@ class Scheduler:
             self.schedule_cond.notify()
 
     def remove_task(self, task_name):
-        """Remove a task dynamically."""
+        """Remove a task safely."""
         with self.schedule_cond:
             if task_name in self.tasks:
                 task = self.tasks.pop(task_name)
-                task.stop()  # Gracefully stop the task
-                task.process.terminate()  # Terminate the task process
-                task.process.join(timeout=1)  # Ensure the process terminates
+                task.stop()
+                
                 if task.process.is_alive():
-                    self.log(f"⚠️ Task {task_name} did not terminate, forcing kill.")
-                    task.process.kill()
-                if task_name in self.message_queues:
-                    del self.message_queues[task_name]
+                    task.process.terminate()
+                    task.process.join(timeout=1)
+                    if task.process.is_alive():
+                        self.log(f"⚠️ Task {task_name} did not terminate, forcing kill.")
+                        task.process.kill()
+
+                del self.message_queues[task_name]
                 self.log(f"❌ Task {task_name} removed.")
             self.schedule_cond.notify()
 
     def _get_task_priority(self, task):
-        """Determine priority based on scheduling policy."""
+        """Determine task priority based on scheduling policy."""
         if self.scheduling_policy == "EDF":
             return task.deadline if task.deadline else float('inf')
         elif self.scheduling_policy == "RMS":
@@ -54,26 +58,25 @@ class Scheduler:
         return task.priority
 
     def dynamic_policy_switch(self):
-        """Dynamically switch scheduling policy based on task metrics."""
-        total_missed = 0
-        with self.lock:
-            for task in self.tasks.values():
-                total_missed += int(task.metrics["missed_deadlines"])
+        """Dynamically switch scheduling policy based on missed deadlines."""
+        total_missed = sum(int(task.metrics["missed_deadlines"]) for task in self.tasks.values())
+
         new_policy = "fixed"
         if total_missed > 0:
             new_policy = "EDF"
         elif all(task.period > 0 for task in self.tasks.values()):
             new_policy = "RMS"
+
         if new_policy != self.scheduling_policy:
             self.log(f"🔄 Switching scheduling policy from {self.scheduling_policy} to {new_policy}")
             self.scheduling_policy = new_policy
 
     def monitor_tasks(self):
-        """Monitor tasks and restart any that have failed."""
+        """Monitor and restart failed tasks."""
         with self.lock:
             for task in list(self.tasks.values()):
-                if not task.process.is_alive():
-                    self.log(f"⚠️ Task {task.name} is not alive. Restarting...")
+                if not task.process.is_alive() and task.running.value:
+                    self.log(f"⚠️ Task {task.name} crashed. Restarting...")
                     new_task = Task(
                         task.name, task.update, period=task.period, priority=task.priority,
                         deadline=task.deadline, overrun_action=task.overrun_action, event_driven=(task.event is not None)
@@ -83,38 +86,39 @@ class Scheduler:
                     new_task.process.start()
 
     def run_scheduler(self):
-        """Continuously manage task execution order and perform dynamic policy switching."""
-        timeout_counter = 0  # Exit condition counter
+        """Continuously manage tasks based on scheduling policy."""
         while self.scheduler_running.is_set():
             with self.schedule_cond:
                 self.schedule_cond.wait(timeout=1)
                 self.dynamic_policy_switch()
+
+                if not self.tasks:
+                    time.sleep(1)  # Avoid excessive CPU usage when idle
+                    continue
+
+                # Sort tasks based on policy
                 task_queue = sorted(self.tasks.values(), key=self._get_task_priority)
-                if not task_queue:
-                    timeout_counter += 1
-                    if timeout_counter > 5:  # Exit if idle for 5 seconds
-                        self.log("⏹️ Scheduler exiting due to inactivity.")
-                        break
-                else:
-                    timeout_counter = 0  # Reset counter when active
-                if task_queue:
-                    highest_priority_task = task_queue[0]
-                    for task in self.tasks.values():
-                        if task is not highest_priority_task:
-                            task.stop()  # Preempt lower-priority tasks for illustration
-                    self.monitor_tasks()
-                    time.sleep(0.001)
+                highest_priority_task = task_queue[0]
+
+                # Ensure only the highest-priority task runs
+                for task in self.tasks.values():
+                    if task is not highest_priority_task and task.running.value:
+                        task.stop()
+
+                self.monitor_tasks()
+                time.sleep(0.01)  # Small delay to prevent excessive CPU load
 
         self.log("🔴 Scheduler loop exited.")
 
     def start(self):
-        """Start the scheduler in a separate thread."""
+        """Start the scheduler."""
         self.scheduler_running.set()
         self.log(f"🟢 minRTOS running with {self.scheduling_policy} scheduling.")
-        threading.Thread(target=self.run_scheduler, daemon=True).start()
+        self.scheduler_thread = threading.Thread(target=self.run_scheduler, daemon=True)
+        self.scheduler_thread.start()
 
     def stop_all(self):
-        """Forcefully stop all tasks and ensure scheduler exits."""
+        """Stop all tasks and exit the scheduler."""
         self.scheduler_running.clear()
         with self.schedule_cond:
             for task in list(self.tasks.values()):
@@ -125,12 +129,18 @@ class Scheduler:
                     if task.process.is_alive():
                         self.log(f"⚠️ Task {task.name} did not terminate, forcing kill.")
                         task.process.kill()
-                self.tasks.clear()
+            self.tasks.clear()
             self.schedule_cond.notify()
         self.log("🛑 All tasks stopped.")
 
+    def join(self):
+        """Wait for the scheduler thread to finish."""
+        if self.scheduler_thread and self.scheduler_thread.is_alive():
+            self.scheduler_thread.join()
+        self.log("✅ Scheduler successfully shut down.")
+
     def trigger_task(self, task_name):
-        """Manually trigger an event-driven task."""
+        """Trigger an event-driven task."""
         if task_name in self.tasks:
             task = self.tasks[task_name]
             if task.event:
@@ -142,7 +152,7 @@ class Scheduler:
             self.message_queues[to_task].put(message)
 
     def receive_message(self, task_name):
-        """Receive a message from the task's queue."""
+        """Receive a message from a task queue."""
         if task_name in self.message_queues:
             try:
                 return self.message_queues[task_name].get_nowait()
@@ -158,5 +168,5 @@ class Scheduler:
             log_file.write(log_message + "\n")
 
     def _signal_handler(self, signum, frame):
-        """Handle OS-level signal for scheduling."""
+        """Handle OS-level scheduling signals."""
         self.log("🔔 Interrupt received, rescheduling tasks...")

@@ -38,8 +38,7 @@ class Task:
             now = time.perf_counter()
 
             if self.event:
-                if not self.event.wait(timeout=0.1):
-                    continue
+                self.event.wait()  # Block until triggered
                 self.event.clear()
 
             if now >= self.next_run:
@@ -51,6 +50,7 @@ class Task:
                     self.metrics["missed_deadlines"] += 1
                     print(f"❌ Task {self.name} encountered error: {e}")
                     self.running.value = False
+                    time.sleep(0.1)  # Prevent immediate restart
                     continue
 
                 execution_time = end_time - start_time
@@ -66,18 +66,25 @@ class Task:
                 if self.deadline and execution_time > self.deadline:
                     self.metrics["missed_deadlines"] += 1
                     if self.overrun_action == "kill":
+                        print(f"💀 Task {self.name} exceeded deadline and is being killed.")
                         self.running.value = False
+                        time.sleep(0.1)  # Avoid immediate restart
                         continue
                     elif self.overrun_action == "pause":
-                        self.event.wait()
+                        print(f"⏸️ Task {self.name} exceeded deadline and is paused.")
+                        self.event.wait()  # Wait until resumed
 
                 self.next_run = now + self.period if self.period > 0 else now
                 run_count += 1  # Increment run counter
 
-            time.sleep(0.001)
+            time.sleep(0.01)  # Reduce CPU usage
 
     def stop(self):
-        """Stop task execution"""
+        """Stop task execution safely"""
         self.running.value = False
         if self.event:
             self.event.set()
+        if self.process.is_alive():
+            self.process.terminate()
+            self.process.join()
+        print(f"🛑 Task {self.name} has been stopped.")
