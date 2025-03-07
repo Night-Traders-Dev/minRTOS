@@ -8,25 +8,31 @@ def low_priority_task():
     """Low priority task that locks a mutex."""
     global scheduler
     print("🟢 Low-Priority Task Started")
-    # Pass the task object to acquire method
-    mutex.acquire(Task("LowPriority", lambda: None, priority=1))  # Explicitly passing Task
-    print("🔒 Low-Priority Task Acquired Mutex")
-    time.sleep(2)  # Simulate work
-    mutex.release()
-    print("🔓 Low-Priority Task Released Mutex")
+    low_task = Task("LowPriority", lambda: None, priority=1)
+    if mutex.acquire(low_task):  # Explicitly passing Task
+        print("🔒 Low-Priority Task Acquired Mutex")
+        time.sleep(2)  # Simulate work
+        low_task.stop()
+        mutex.release()
+
+        print("🔓 Low-Priority Task Released Mutex")
+    else:
+        print("🛑 Low-Priority Task Could Not Acquire Mutex")
 
 def high_priority_task():
     """High priority task that needs the mutex."""
     global scheduler
     print("🚀 High-Priority Task Started")
     time.sleep(0.5)  # Ensure the low-priority task locks the mutex first
-    print("🛑 High-Priority Task Trying to Acquire Mutex")
-    # Pass the task object to acquire method
-    mutex.acquire(Task("HighPriority", lambda: None, priority=5))  # Explicitly passing Task
-    print("✅ High-Priority Task Acquired Mutex")
-    time.sleep(1)
-    mutex.release()
-    print("🔓 High-Priority Task Released Mutex")
+    high_task = Task("HighPriority", lambda: None, priority=5)
+    if mutex.acquire(high_task):  # Explicitly passing Task
+        print("✅ High-Priority Task Acquired Mutex")
+        time.sleep(1)
+        high_task.stop()
+        mutex.release()
+        print("🔓 High-Priority Task Released Mutex")
+    else:
+        print("🛑 High-Priority Task Could Not Acquire Mutex")
 
 def periodic_task():
     """Task that runs periodically every second."""

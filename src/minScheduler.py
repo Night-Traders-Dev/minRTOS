@@ -102,8 +102,8 @@ class Scheduler:
                     for task in self.tasks.values():
                         if task is not highest_priority_task:
                             task.stop()  # Preempt lower-priority tasks for illustration
-            self.monitor_tasks()
-            time.sleep(0.001)
+                    self.monitor_tasks()
+                    time.sleep(0.001)
 
         self.log("🔴 Scheduler loop exited.")
 
