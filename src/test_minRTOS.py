@@ -1,5 +1,5 @@
 import time
-from src.minRTOS import Scheduler, Task, Mutex
+from minRTOS import Scheduler, Task, Mutex
 
 def simple_update():
     print("Task is running.")
