@@ -20,6 +20,23 @@ def mutex_update(mutex, name):
     else:
         print(f"{name} failed to acquire mutex!")
 
+def blockchain_contract_update(contract_name, state):
+    print(f"[Blockchain] Executing contract: {contract_name}, current state: {state['value']}")
+    # Simulate contract logic: increment state, check for overflow
+    state['value'] += 1
+    if state['value'] > 5:
+        print(f"[Blockchain] {contract_name} state overflow!")
+        raise Exception("State overflow")
+    time.sleep(0.07)
+
+def blockchain_event_update(contract_name, event_queue):
+    if not event_queue:
+        print(f"[Blockchain] {contract_name} waiting for event...")
+        return
+    event = event_queue.pop(0)
+    print(f"[Blockchain] {contract_name} processing event: {event}")
+    time.sleep(0.05)
+
 def main():
     print("--- minRTOS Test Start ---")
     scheduler = Scheduler()
@@ -43,8 +60,35 @@ def main():
     scheduler.add_task(mtask1)
     scheduler.add_task(mtask2)
 
+    # Blockchain contract simulation: stateful contract
+    contract_state = {'value': 0}
+    def contract_task():
+        blockchain_contract_update("DemoContract", contract_state)
+    contract = Task("DemoContractTask", contract_task, period=0.12, priority=5, max_runs=7)
+    scheduler.add_task(contract)
+
+    # Blockchain event-driven contract
+    event_queue = ["Deposit", "Withdraw", "Transfer"]
+    def event_contract_task():
+        blockchain_event_update("EventContract", event_queue)
+    event_contract = Task("EventContractTask", event_contract_task, period=0.09, priority=6, max_runs=5)
+    scheduler.add_task(event_contract)
+
+    # Edge case: contract with zero period (should run once)
+    def zero_period_contract():
+        print("[Blockchain] Zero period contract executed.")
+    zero_contract = Task("ZeroPeriodContract", zero_period_contract, period=0, priority=7, max_runs=1)
+    scheduler.add_task(zero_contract)
+
+    # Edge case: contract with missed deadline and pause
+    def slow_contract():
+        print("[Blockchain] Slow contract running.")
+        time.sleep(0.2)
+    slow_contract_task = Task("SlowContractTask", slow_contract, period=0.1, priority=8, deadline=0.1, overrun_action="pause", max_runs=2)
+    scheduler.add_task(slow_contract_task)
+
     scheduler.start()
-    time.sleep(2)  # Let tasks run
+    time.sleep(3)  # Let tasks run
     scheduler.stop_all()
     scheduler.join()
     print("--- minRTOS Test End ---")
@@ -55,6 +99,10 @@ def main():
         print(f"Task: {tname}")
         for k, v in task.metrics.items():
             print(f"  {k}: {v}")
+        if tname == "DemoContractTask":
+            print(f"  Final contract state: {contract_state['value']}")
+        if tname == "EventContractTask":
+            print(f"  Remaining events: {event_queue}")
 
 if __name__ == "__main__":
     main()
