@@ -1,7 +1,7 @@
 import hashlib
 import time
 import random
-from .minMutex import Mutex
+from minMutex import Mutex
 
 class Block:
     def __init__(self, index, prev_hash, transactions):
