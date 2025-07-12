@@ -88,7 +88,13 @@ class Task:
                         continue
                     elif self.overrun_action == "pause":
                         print(f"⏸️ Task {self.name} exceeded deadline and is paused.")
-                        self.event.wait()  # Wait until resumed
+                        if self.event:
+                            self.event.wait()  # Wait until resumed
+                        else:
+                            print(f"⚠️ Task {self.name} cannot pause (not event-driven). Stopping task.")
+                            self.running.value = False
+                            time.sleep(0.05)
+                            continue
 
                 self.next_run = now + self.period if self.period > 0 else now
                 run_count += 1  # Increment run counter
