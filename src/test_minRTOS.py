@@ -49,5 +49,12 @@ def main():
     scheduler.join()
     print("--- minRTOS Test End ---")
 
+    # Print metrics for all tasks
+    print("\nTask Metrics:")
+    for tname, task in scheduler.tasks.items():
+        print(f"Task: {tname}")
+        for k, v in task.metrics.items():
+            print(f"  {k}: {v}")
+
 if __name__ == "__main__":
     main()

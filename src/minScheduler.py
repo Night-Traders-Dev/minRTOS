@@ -168,8 +168,11 @@ class Scheduler:
         timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
         log_message = f"[{timestamp}] {message}"
         print(log_message)
-        with open(LOG_FILE, "a") as log_file:
-            log_file.write(log_message + "\n")
+        try:
+            with open(LOG_FILE, "a") as log_file:
+                log_file.write(log_message + "\n")
+        except Exception as e:
+            print(f"[LOG ERROR] {e}")
 
     def _signal_handler(self, signum, frame):
         """Handle OS-level scheduling signals."""

@@ -2,10 +2,24 @@ import multiprocessing
 import time
 import sys
 
+# Shared Manager for all tasks
+_shared_manager = multiprocessing.Manager()
+
 class Task:
     """Real-time task class for minRTOS"""
     def __init__(self, name, update_func, period=0, priority=1, deadline=None,
                  overrun_action="kill", event_driven=False, max_runs=None):
+        """
+        Args:
+            name (str): Task name
+            update_func (callable): Function to run each period
+            period (float): Period in seconds
+            priority (int): Task priority
+            deadline (float): Deadline in seconds
+            overrun_action (str): Action on deadline overrun ('kill' or 'pause')
+            event_driven (bool): If True, task is event-driven
+            max_runs (int): Maximum number of runs
+        """
         self.name = name
         self.update = update_func
         self.period = period
@@ -16,8 +30,9 @@ class Task:
         self.next_run = time.perf_counter()
         self.running = multiprocessing.Value('b', True)
         self.event = multiprocessing.Event() if event_driven else None
-        self.metrics = multiprocessing.Manager().dict({
+        self.metrics = _shared_manager.dict({
             "exec_time": 0,
+            "exec_history": [],
             "missed_deadlines": 0,
             "cpu_usage": 0,
             "memory_usage": 0
@@ -50,11 +65,12 @@ class Task:
                     self.metrics["missed_deadlines"] += 1
                     print(f"❌ Task {self.name} encountered error: {e}")
                     self.running.value = False
-                    time.sleep(0.1)  # Prevent immediate restart
+                    time.sleep(0.05)  # Prevent immediate restart
                     continue
 
                 execution_time = end_time - start_time
                 self.metrics["exec_time"] = execution_time
+                self.metrics["exec_history"].append(execution_time)
 
                 if self.period > 0:
                     self.metrics["cpu_usage"] = (execution_time / self.period) * 100
@@ -68,7 +84,7 @@ class Task:
                     if self.overrun_action == "kill":
                         print(f"💀 Task {self.name} exceeded deadline and is being killed.")
                         self.running.value = False
-                        time.sleep(0.1)  # Avoid immediate restart
+                        time.sleep(0.05)  # Avoid immediate restart
                         continue
                     elif self.overrun_action == "pause":
                         print(f"⏸️ Task {self.name} exceeded deadline and is paused.")
@@ -77,7 +93,7 @@ class Task:
                 self.next_run = now + self.period if self.period > 0 else now
                 run_count += 1  # Increment run counter
 
-            time.sleep(0.01)  # Reduce CPU usage
+            time.sleep(0.02)  # Reduce CPU usage (less busy-wait)
 
     def stop(self):
         """Stop task execution safely"""
