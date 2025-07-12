@@ -20,7 +20,10 @@ class Scheduler:
         self.scheduler_running = threading.Event()
         self.scheduler_thread = None  
         self.log_queue = queue.Queue()
-        signal.signal(signal.SIGUSR1, self._signal_handler)
+        import sys
+        if sys.platform != "win32":
+            import signal
+            signal.signal(signal.SIGUSR1, self._signal_handler)
 
     def add_task(self, task):
         """Dynamically add a task."""
@@ -37,14 +40,13 @@ class Scheduler:
             if task_name in self.tasks:
                 task = self.tasks.pop(task_name)
                 task.stop()
-                
                 if task.process.is_alive():
                     task.process.terminate()
                     task.process.join(timeout=1)
                     if task.process.is_alive():
                         self.log(f"⚠️ Task {task_name} did not terminate, forcing kill.")
                         task.process.kill()
-
+                        task.process.join(timeout=1)
                 del self.message_queues[task_name]
                 self.log(f"❌ Task {task_name} removed.")
             self.schedule_cond.notify()
@@ -79,7 +81,8 @@ class Scheduler:
                     self.log(f"⚠️ Task {task.name} crashed. Restarting...")
                     new_task = Task(
                         task.name, task.update, period=task.period, priority=task.priority,
-                        deadline=task.deadline, overrun_action=task.overrun_action, event_driven=(task.event is not None)
+                        deadline=task.deadline, overrun_action=task.overrun_action, event_driven=(task.event is not None),
+                        max_runs=task.max_runs
                     )
                     self.tasks[task.name] = new_task
                     self.message_queues[task.name] = multiprocessing.Queue()
@@ -129,6 +132,7 @@ class Scheduler:
                     if task.process.is_alive():
                         self.log(f"⚠️ Task {task.name} did not terminate, forcing kill.")
                         task.process.kill()
+                        task.process.join(timeout=1)
             self.tasks.clear()
             self.schedule_cond.notify()
         self.log("🛑 All tasks stopped.")

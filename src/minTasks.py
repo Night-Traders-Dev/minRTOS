@@ -86,5 +86,8 @@ class Task:
             self.event.set()
         if self.process.is_alive():
             self.process.terminate()
-            self.process.join()
+            self.process.join(timeout=1)
+            if self.process.is_alive():
+                self.process.kill()
+                self.process.join(timeout=1)
         print(f"🛑 Task {self.name} has been stopped.")
