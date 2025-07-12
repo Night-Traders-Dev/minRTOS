@@ -1,5 +1,6 @@
 import time
 from minRTOS import Scheduler, Task, Mutex
+from minBlockchain import BlockchainStateManager, Block, consensus_task, tx_validation_task, contract_sandbox_task, network_task, api_task
 
 def simple_update():
     print("Task is running.")
@@ -38,9 +39,32 @@ def blockchain_event_update(contract_name, event_queue):
     time.sleep(0.05)
 
 def main():
-    print("--- minRTOS Test Start ---")
+    print("--- minRTOS Blockchain Integration Test Start ---")
     scheduler = Scheduler()
+    state_manager = BlockchainStateManager()
+    difficulty = 3
 
+    # Add network task
+    net_task = Task("NetworkTask", lambda: network_task(state_manager), period=0.1, priority=5, max_runs=10)
+    scheduler.add_task(net_task)
+
+    # Add transaction validation task
+    validation_task = Task("TxValidationTask", lambda: tx_validation_task(state_manager), period=0.12, priority=6, max_runs=8)
+    scheduler.add_task(validation_task)
+
+    # Add consensus (mining) task
+    consensus = Task("ConsensusTask", lambda: consensus_task(state_manager, difficulty), period=0.15, priority=7, max_runs=5)
+    scheduler.add_task(consensus)
+
+    # Add contract sandbox task
+    contract = Task("ContractSandboxTask", lambda: contract_sandbox_task("DemoContract", state_manager), period=0.13, priority=8, max_runs=6)
+    scheduler.add_task(contract)
+
+    # Add API task
+    api = Task("APITask", lambda: api_task(state_manager), period=0.2, priority=4, max_runs=7)
+    scheduler.add_task(api)
+
+    # Retain original tests for comparison
     # Test: Add a simple periodic task
     task1 = Task("SimpleTask", simple_update, period=0.1, priority=2, max_runs=3)
     scheduler.add_task(task1)
@@ -64,8 +88,8 @@ def main():
     contract_state = {'value': 0}
     def contract_task():
         blockchain_contract_update("DemoContract", contract_state)
-    contract = Task("DemoContractTask", contract_task, period=0.12, priority=5, max_runs=7)
-    scheduler.add_task(contract)
+    contract2 = Task("DemoContractTask", contract_task, period=0.12, priority=5, max_runs=7)
+    scheduler.add_task(contract2)
 
     # Blockchain event-driven contract
     event_queue = ["Deposit", "Withdraw", "Transfer"]
@@ -88,10 +112,10 @@ def main():
     scheduler.add_task(slow_contract_task)
 
     scheduler.start()
-    time.sleep(3)  # Let tasks run
+    time.sleep(4)  # Let tasks run
     scheduler.stop_all()
     scheduler.join()
-    print("--- minRTOS Test End ---")
+    print("--- minRTOS Blockchain Integration Test End ---")
 
     # Print metrics for all tasks
     print("\nTask Metrics:")
@@ -103,6 +127,13 @@ def main():
             print(f"  Final contract state: {contract_state['value']}")
         if tname == "EventContractTask":
             print(f"  Remaining events: {event_queue}")
+
+    print("\nBlockchain State:")
+    print(f"Blocks: {len(state_manager.blocks)}")
+    for block in state_manager.blocks:
+        print(f"  Block {block.index}: Hash={block.hash}, TxCount={len(block.transactions)}")
+    print(f"State: {state_manager.state}")
+    print(f"Tx Pool: {state_manager.tx_pool}")
 
 if __name__ == "__main__":
     main()
